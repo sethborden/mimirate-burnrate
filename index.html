@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.6.0/lodash.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.js"></script>
+    
+    <script src="moment.min.js"></script>
+    <script src="moment-range.min.js"></script>
+    <script src="angular-uuid2.min.js"></script>
+    <script src="script.js"></script>
+    
+
+    <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body ng-app="burnApp">
+    <div class="main-bit col-md-12" ng-controller="BurnController as burn">
+        <div class="col-md-2">
+            <fieldset>
+                <legend>New Transaction </legend>
+                <form id="newTxnForm" name="burn.newTransactionForm" ng-submit="burn.addTransaction(burn.newTransactionForm)">
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <input ng-model="burn.description" class="form-control" type="test" name="description">
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">Amount</label>
+                        <input ng-model="burn.amount" class="form-control" type="test" name="amount">
+                    </div>
+                    <div class="form-group">
+                        <label for="start-date">Start Date</label>
+                        <input ng-model="burn.startDate" class="form-control" type="date" name="start-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="end-date">End Date</label>
+                        <input ng-model="burn.endDate" class="form-control" type="date" name="end-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="frequency">Frequency</label>
+                        <select ng-model="burn.frequency" class="form-control" name="frequency">
+                            <option value="day">Daily</option>
+                            <option value="week">Weekly</option>
+                            <option value="biweek">Bi-weekly</option>
+                            <option value="month">Monthly</option>
+                        </select>
+                    </div>
+                    <input class="btn btn-primary" type="submit" value="Add Transaction">
+                </form>
+            </fieldset>
+        </div>
+        <div class="col-md-8 middle">
+            <fieldset>
+                <legend>Current Transactions: 
+                <input class="form-inline form-control" type="text"
+                ng-model="burn.collection.name" ng-change="burn.saveActive=true;">
+                </legend>
+                <table class="table table-striped">
+                    <tr>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Frequency</th>
+                        <th></th>
+                    </tr>
+                    <tr ng-repeat="txn in burn.collection.txns">
+                        <td><input class="form-control" ng-model="txn.description"></td>
+                        <td><input class="form-control" ng-model="txn.amount"
+                            ng-model-options="{updateOn: 'blur'}"
+                            ng-change="burn.updateEverything()"></td>
+                        <td><input class="form-control" type="date"
+                            ng-model-options="{updateOn: 'blur'}"
+                            ng-change="burn.updateEverything()" ng-model="txn.startDate"></td>
+                        <td><input class="form-control"
+                            ng-model-options="{updateOn: 'blur'}"
+                            ng-if="txn.frequency!=='none'" type="date"
+                        ng-change="burn.updateEverything()" ng-model="txn.endDate"></td>
+                        <td>
+                            <select ng-model="txn.frequency"
+                                class="form-control" name="frequency"
+                                ng-change="burn.updateEverything()">
+                                <option value="none">None</option>
+                                <option value="day">Daily</option>
+                                <option value="week">Weekly</option>
+                                <option value="biweek">Bi-weekly</option>
+                                <option value="month">Monthly</option>
+                            </select>
+                        </td>
+                        <td class='button-cell'>
+                            <span class="glyphicon glyphicon-remove-sign" ng-click="burn.removeTransaction($index)"></span>
+                        </td>
+                    </tr>
+                </table>
+                <div class="form-group">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Load</button>
+                        <ul class="dropdown-menu" role="menu">
+                            <li ng-repeat="t in burn.getSavedTransactions()">
+                                <a ng-click="burn.loadTransaction(t.k)">{{t.name}}</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <button ng-disabled="!burn.saveActive" class="btn btn-success" ng-click="burn.saveTransactions()">Save</button>
+                    <button class="btn btn-danger" ng-click="burn.newCollection()">New</button>
+                    <button class="btn btn-danger pull-right" ng-click="burn.deleteCollection()">Delete</button>
+                </div>
+            </fieldset>
+        </div>
+        <div class="col-md-2 right">
+            <fieldset>
+                <legend>Results</legend>
+                <div class="form-group">
+                    <label for="end-date">Target Date</label>
+                    <input class="form-control" 
+                        type="date" 
+                        ng-model="burn.targetDate" 
+                        ng-change="burn.updateValue()" 
+                        name="target-date">
+                    <div class="burn-value">
+                        {{burn.valueOnDate | currency}}
+                    </div>
+                    <div class="burn-chart"></div>
+                    <div>
+                        Lowest: {{ burn.minValue | currency}}
+                    </div>
+                    <div>
+                        Final: {{ burn.endValue | currency}}
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+</body>
+
+</html>
